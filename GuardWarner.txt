@@ -1,0 +1,14 @@
+#Manifest File
+
+## Title: Guard Warner
+## Version: 1.0
+## Description: Warns of invulnerable guards in reticle of player
+## Author: DungMerchant
+## SavedVariables: GuardWarnerSavedVariables
+## IsLibrary: false
+## APIVersion: 101036
+## AddOnVersion: 20230306
+## DependsOn: LibAddonMenu-2.0>=33
+
+Strings.lua
+GuardWarner.lua
