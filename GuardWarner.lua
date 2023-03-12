@@ -1,16 +1,28 @@
 local LAM = LibAddonMenu2
+local async = LibAsync
+
+local SHIELD_OPACITY_INCREMENT = 1e-5
+local GREEN_SHIELD_OPACITY = 0.5
+local SHIELD_LARGE = 1.0
+local SHIELD_NORMAL = 0.5
 
 GuardWarner = {}
 
 GuardWarner.savedVariables = nil
 GuardWarner.name = "GuardWarner"
 GuardWarner.icon = nil
+GuardWarner.shieldOpacity = 0.5
+GuardWarner.shieldPulseDirection = 1
+GuardWarner.shieldPulseActive = true
 
 GuardWarner.defaults = {
-  showHeatWarning = true,
-  playHeatAlertSound = true,
-  showNoHeatWarning = true,
-  playNoHeatAlertSound = false
+  largeShield = false,
+  showKosWarning = true,
+  playKosAlertSound = true,
+  showBountyWarning = true,
+  playBountyAlertSound = false,
+  showUpstandingWarning = true,
+  playUpstandingAlertSound = false,
 }
 
 function GuardWarner.Initialize()
@@ -18,7 +30,7 @@ function GuardWarner.Initialize()
 
   -- Register for events that interest us
   EVENT_MANAGER:RegisterForEvent(GuardWarner.name, EVENT_RETICLE_TARGET_CHANGED, GuardWarner.OnReticleTargetChanged)
-  EVENT_MANAGER:RegisterForEvent(GuardWarner.name, EVENT_PLAYER_COMBAT_STATE, GuardWarner.OnPlayerCombatState)
+  --EVENT_MANAGER:RegisterForEvent(GuardWarner.name, EVENT_PLAYER_COMBAT_STATE, GuardWarner.OnPlayerCombatState)
   
   -- Pre-load a shield .dds icon centered just above the player's reticle and hide it.
   GuardWarner.inCombat = IsUnitInCombat("player")
@@ -27,8 +39,8 @@ function GuardWarner.Initialize()
   GuardWarner.icon:SetAnchor(CENTER, ZO_ReticleContainer, CENTER, 0, -100)
   GuardWarner.icon:SetTexture("GuardWarner\\Textures\\shield.dds")
   GuardWarner.icon:SetDimensions(128, 128)
-  GuardWarner.icon:SetColor(255, 255, 255, 0.5)
-  GuardWarner.icon:SetScale(0.5)
+  GuardWarner.icon:SetColor(255, 255, 255, GuardWarner.shieldOpacity)
+  GuardWarner.icon:SetScale(SHIELD_NORMAL)
   GuardWarner.icon:SetHidden(true)
 
   -- Initialize the settings panel
@@ -47,50 +59,86 @@ function GuardWarner.Initialize()
 
   local optionsTable = {
     {
+      type = "checkbox",
+      name = GetString(LARGE_SHIELD_LABEL),
+      tooltip = GetString(LARGE_SHIELD_LABEL),
+      getFunc = function()
+        return GuardWarner.savedVariables.showLargeShield
+      end,
+      setFunc = function(state)
+        GuardWarner.savedVariables.showLargeShield = state
+      end,
+      default = true,
+    },
+      {
     type = "checkbox",
-    name = GetString(HEAT_WARNING),
-    tooltip = GetString(HEAT_WARNING),
+    name = GetString(KOS_WARNING_LABEL),
+    tooltip = GetString(KOS_WARNING_LABEL),
     getFunc = function()
-      return GuardWarner.savedVariables.showHeatWarning
+      return GuardWarner.savedVariables.showKosWarning
     end,
     setFunc = function(state)
-      GuardWarner.savedVariables.showHeatWarning = state
+      GuardWarner.savedVariables.showKosWarning = state
     end,
     default = true,
   },
   {
     type = "checkbox",
-    name = GetString(HEAT_ALERT_SOUND),
-    tooltip = GetString(HEAT_ALERT_SOUND),
+    name = GetString(KOS_ALERT_SOUND_LABEL),
+    tooltip = GetString(KOS_ALERT_SOUND_LABEL),
     getFunc = function()
-      return GuardWarner.savedVariables.playHeatAlertSound
+      return GuardWarner.savedVariables.playKosAlertSound
     end,
     setFunc = function(state)
-      GuardWarner.savedVariables.playHeatAlertSound = state
+      GuardWarner.savedVariables.playKosAlertSound = state
     end,
     default = true,
   },
   {
     type = "checkbox",
-    name = GetString(NO_HEAT_WARNING),
-    tooltip = GetString(NO_HEAT_WARNING),
+    name = GetString(BOUNTY_WARNING_LABEL),
+    tooltip = GetString(BOUNTY_WARNING_LABEL),
     getFunc = function()
-      return GuardWarner.savedVariables.showNoHeatWarning
+      return GuardWarner.savedVariables.showBountyWarning
     end,
     setFunc = function(state)
-      GuardWarner.savedVariables.showNoHeatWarning = state
+      GuardWarner.savedVariables.showBountyWarning = state
     end,
     default = true,
   },
   {
     type = "checkbox",
-    name = GetString(NO_HEAT_ALERT_SOUND),
-    tooltip = GetString(NO_HEAT_ALERT_SOUND),
+    name = GetString(BOUNTY_ALERT_SOUND_LABEL),
+    tooltip = GetString(BOUNTY_ALERT_SOUND_LABEL),
     getFunc = function() return
-      GuardWarner.savedVariables.playNoHeatAlertSound
+      GuardWarner.savedVariables.playBountyAlertSound
     end,
     setFunc = function(state)
-      GuardWarner.savedVariables.playNoHeatAlertSound = state
+      GuardWarner.savedVariables.playBountyAlertSound = state
+    end,
+    default = false,
+  },
+  {
+    type = "checkbox",
+    name = GetString(UPSTANDING_WARNING_LABEL),
+    tooltip = GetString(UPSTANDING_WARNING_LABEL),
+    getFunc = function() return
+      GuardWarner.savedVariables.showUpstandingWarning
+    end,
+    setFunc = function(state)
+      GuardWarner.savedVariables.showUpstandingWarning = state
+    end,
+    default = true,
+  },
+  {
+    type = "checkbox",
+    name = GetString(UPSTANDING_ALERT_SOUND_LABEL),
+    tooltip = GetString(UPSTANDING_ALERT_SOUND_LABEL),
+    getFunc = function() return
+      GuardWarner.savedVariables.playUpstandingAlertSound
+    end,
+    setFunc = function(state)
+      GuardWarner.savedVariables.playUpstandingAlertSound = state
     end,
     default = false,
   },
@@ -103,40 +151,70 @@ end
 --   and the player has no bounty, we want to optionally display a yellow shield above the reticle.
 function GuardWarner.OnReticleTargetChanged(eventCode)
   if (IsUnitInvulnerableGuard("reticleover")) then
-    if (GetBounty() > 0) then
 
-      if (GuardWarner.savedVariables.playHeatAlertSound) then
-        PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
-      end
-
-      if (GuardWarner.savedVariables.showHeatWarning) then
-        GuardWarner.icon:SetColor( 255, 0, 0, .75 )
-        GuardWarner.icon:SetHidden(false)
-      end
-
+    if (GuardWarner.savedVariables.showLargeShield) then
+      GuardWarner.icon:SetScale(SHIELD_LARGE)
     else
-
-      if (GuardWarner.savedVariables.playNoHeatAlertSound) then
-        PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
-      end
-
-      if (GuardWarner.savedVariables.showNoHeatWarning) then
-        GuardWarner.icon:SetColor( 255, 255, 0, .5 )
-        GuardWarner.icon:SetHidden(false)
-      end
-
+      GuardWarner.icon:SetScale(SHIELD_NORMAL)
     end
-  else
-    GuardWarner.icon:SetHidden(true)
+
+    async:While(function() return IsUnitInvulnerableGuard("reticleover") end):Do(function()
+      GuardWarner.StepShieldOpacity()
+      GuardWarner.DrawShield()
+    end
+    )
+
+    -- Play alert sound if required
+  if (IsKillOnSight() and GuardWarner.savedVariables.playKosAlertSound) then
+    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+  elseif (GetBounty() > 0 and GuardWarner.savedVariables.playBountyAlertSound) then
+    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+  elseif (GetBounty() == 0 and GuardWarner.savedVariables.playUpstandingAlertSound) then
+    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+  end
+else
+  GuardWarner.icon:SetHidden(true)
+end
+end
+
+-- Draw the correct shield colour at opacity
+function GuardWarner.DrawShield()  
+  if (IsKillOnSight() and GuardWarner.savedVariables.showKosWarning) then
+    GuardWarner.icon:SetColor(255, 0, 0, GuardWarner.shieldOpacity)
+    GuardWarner.icon:SetHidden(false)
+  elseif (GetBounty() > 0 and GuardWarner.savedVariables.showBountyWarning) then
+    GuardWarner.icon:SetColor(255, 255, 0, GuardWarner.shieldOpacity)
+    GuardWarner.icon:SetHidden(false)
+  elseif (GetBounty() == 0 and GuardWarner.savedVariables.showUpstandingWarning) then
+    GuardWarner.icon:SetColor(0, 255, 0, GREEN_SHIELD_OPACITY)
+    GuardWarner.icon:SetHidden(false)
+  elseif (not GuardWarner.savedVariables.showUpstandingWarning) then
+  GuardWarner.icon:SetHidden(true)
+else
+  GuardWarner.icon:SetHidden(true)
   end
 end
 
--- Check to see if the player has entered combat with an invulnerable guard and ensure that the shield is red.
-function GuardWarner.OnPlayerCombatState(eventCode, inCombat)
-  if (inCombat and IsUnitInvulnerableGuard("reticleover")) then
-    GuardWarner.icon:SetColor( 255, 0, 0, .75 )
-    GuardWarner.icon:SetHidden(not GuardWarner.savedVariables.showHeatWarning)
+-- Change the shield opacity according to the shield pulse direction
+-- chaning this direction which opacity reaches its limits
+function GuardWarner.StepShieldOpacity()
+    -- Still going up?
+    if (GuardWarner.shieldOpacity >= 1.0) then
+      GuardWarner.shieldPulseDirection = -1
+    end
+
+    -- Still going down?
+    if (GuardWarner.shieldOpacity <= 0.0) then
+      GuardWarner.shieldPulseDirection = 1
+    end
+
+    -- Step the opacity according to direction
+  if (GuardWarner.shieldPulseDirection > 0) then
+    GuardWarner.shieldOpacity = GuardWarner.shieldOpacity + SHIELD_OPACITY_INCREMENT
+  else
+    GuardWarner.shieldOpacity = GuardWarner.shieldOpacity - SHIELD_OPACITY_INCREMENT
   end
+
 end
 
 -- Callback to load the GuardWarner add-on.
