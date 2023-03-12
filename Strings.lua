@@ -1,14 +1,17 @@
 local strings = {
     TITLE = "Guard Warner",
     AUTHOR = "DungMerchant",
-    VERSION = "1.0",
-    WEBSITE = "https://www.esoui.com/addons.php",
+    VERSION = "1.1",
+    WEBSITE = "https://www.esoui.com/downloads/info3590-GuardWarner.html",
 
-    -- label text
-    HEAT_WARNING = "Show shield icon when heat is on",
-    HEAT_ALERT_SOUND = "Play alert sound when heat is on",
-    NO_HEAT_WARNING = "Always show shield icon (regardless of heat)",
-    NO_HEAT_ALERT_SOUND = "Always play alert sound",
+    -- label texts
+    LARGE_SHIELD_LABEL = "Show the larger shield icon",
+    KOS_WARNING_LABEL = "Show red shield when guards  kill on sight",
+    KOS_ALERT_SOUND_LABEL = "Play alert sound when guards kill on sight",
+    BOUNTY_WARNING_LABEL = "Show yellow shield when guards demand bounty",
+    BOUNTY_ALERT_SOUND_LABEL = "Play alert sound when guards demand bounty",
+    UPSTANDING_WARNING_LABEL = "Show green shield icon when upstanding",
+    UPSTANDING_ALERT_SOUND_LABEL = "Play alert sound when upstanding",
 }
 
 for stringId, stringValue in pairs(strings) do
