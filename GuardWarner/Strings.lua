@@ -1,7 +1,7 @@
 local strings = {
     TITLE = "Guard Warner",
     AUTHOR = "DungMerchant",
-    VERSION = "1.1",
+    VERSION = "1.3",
     WEBSITE = "https://www.esoui.com/downloads/info3590-GuardWarner.html",
 
     -- label texts
