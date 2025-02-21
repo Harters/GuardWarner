@@ -1,17 +1,17 @@
 local strings = {
     TITLE = "Guard Warner",
-    AUTHOR = "DungMerchant",
-    VERSION = "1.3",
+    AUTHOR = "The Dung Merchant",
+    VERSION = "1.4",
     WEBSITE = "https://www.esoui.com/downloads/info3590-GuardWarner.html",
 
     -- label texts
-    SHOW_BOUNTY_TIMER_LABEL = "Show bounty time remaining until upstanding",
+    SHOW_BOUNTY_TIMER_LABEL = "Show bounty time remaining",
     LARGE_SHIELD_LABEL = "Show the larger shield icon",
-    KOS_WARNING_LABEL = "Show red shield when guards  kill on sight",
-    KOS_ALERT_SOUND_LABEL = "Play alert sound when guards kill on sight",
-    BOUNTY_WARNING_LABEL = "Show yellow shield when guards demand bounty",
-    BOUNTY_ALERT_SOUND_LABEL = "Play alert sound when guards demand bounty",
-    UPSTANDING_WARNING_LABEL = "Show green shield icon when upstanding",
+    KOS_WARNING_LABEL = "Show red shield when guards will attack",
+    KOS_ALERT_SOUND_LABEL = "Play alert sound when guards will attack",
+    BOUNTY_WARNING_LABEL = "Show yellow shield if bounty applies",
+    BOUNTY_ALERT_SOUND_LABEL = "Play alert sound if bounty applies",
+    UPSTANDING_WARNING_LABEL = "Show green shield icon whilst upstanding",
     UPSTANDING_ALERT_SOUND_LABEL = "Play alert sound when upstanding",
 }
 

@@ -1,7 +1,10 @@
 local LAM = LibAddonMenu2
 local async = LibAsync
 
-local SHIELD_OPACITY_INCREMENT = 1e-5
+local INFAMY_LEVEL_DISREPUTABLE = 1
+local INFAMY_LEVEL_NOTORIOUS = 2
+local INFAMY_LEVEL_FUGITIVE = 3
+local SHIELD_OPACITY_INCREMENT = 0.1
 local GREEN_SHIELD_OPACITY = 0.5
 local SHIELD_LARGE = 1.0
 local SHIELD_NORMAL = 0.5
@@ -16,6 +19,7 @@ GuardWarner.shieldPulseDirection = 1
 GuardWarner.shieldPulseActive = true
 GuardWarner.bountyTimeText = ""
 GuardWarner.lastTime = 0
+GuardWarner.notOnGuard = false
 
 GuardWarner.defaults = {
   showBountyTimer = true,
@@ -33,7 +37,6 @@ function GuardWarner.Initialize()
 
   -- Register for events that interest us
   EVENT_MANAGER:RegisterForEvent(GuardWarner.name, EVENT_RETICLE_TARGET_CHANGED, GuardWarner.OnReticleTargetChanged)
-  --EVENT_MANAGER:RegisterForEvent(GuardWarner.name, EVENT_PLAYER_COMBAT_STATE, GuardWarner.OnPlayerCombatState)
   
   -- Pre-load a shield .dds icon centered just above the player's reticle and hide it.
   GuardWarner.inCombat = IsUnitInCombat("player")
@@ -159,8 +162,7 @@ function GuardWarner.Initialize()
   },
 }
   LAM:RegisterOptionControls("GW", optionsTable)
-
-  GuardWarner.UpdateTimer();
+  GuardWarner.lastTime = GetSecondsUntilBountyDecaysToZero()
 end
 
 -- When the player moves their reticle over an invulnerable guard:
@@ -168,37 +170,43 @@ end
 --   and the player has no bounty, we want to optionally display a yellow shield above the reticle.
 function GuardWarner.OnReticleTargetChanged(eventCode)
   if (IsUnitInvulnerableGuard("reticleover")) then
-
+    GuardWarner.notOnGuard = false
     if (GuardWarner.savedVariables.showLargeShield) then
       GuardWarner.icon:SetScale(SHIELD_LARGE)
     else
       GuardWarner.icon:SetScale(SHIELD_NORMAL)
     end
 
-    async:While(function() return IsUnitInvulnerableGuard("reticleover") end):Do(function()
-      GuardWarner.StepShieldOpacity()
-      GuardWarner.DrawShield()
-      GuardWarner.DrawBountyTimeText()
+    async:WaitUntil(function()
+      if (GuardWarner.notOnGuard) then
+        GuardWarner.icon:SetHidden(true)
+        GuardWarnerGuiLabel:SetHidden(true)
+      else
+        GuardWarner.StepShieldOpacity()
+        GuardWarner.DrawShield()
+        GuardWarner.DrawBountyTimeText()
+      end
+      return GuardWarner.notOnGuard
     end
     )
 
     -- Play alert sound if required
-  if (IsKillOnSight() and GuardWarner.savedVariables.playKosAlertSound) then
-    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
-  elseif (GetBounty() > 0 and GuardWarner.savedVariables.playBountyAlertSound) then
-    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
-  elseif (GetBounty() == 0 and GuardWarner.savedVariables.playUpstandingAlertSound) then
-    PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+    if (IsKillOnSight() and GuardWarner.savedVariables.playKosAlertSound) then
+      PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+    elseif (GetBounty() > 0 and GuardWarner.savedVariables.playBountyAlertSound) then
+      PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+    elseif (GetBounty() == 0 and GuardWarner.savedVariables.playUpstandingAlertSound) then
+      PlaySound(SOUNDS.JUSTICE_STATE_CHANGED)
+    end
+  else
+    GuardWarner.notOnGuard = true
   end
-else
-  GuardWarner.icon:SetHidden(true)
-  GuardWarnerGuiLabel:SetHidden(true)
-end
 end
 
 -- Draw the correct shield colour at opacity
-function GuardWarner.DrawShield()  
-  if (IsKillOnSight() and GuardWarner.savedVariables.showKosWarning) then
+function GuardWarner.DrawShield()
+  infamyLevel = GetInfamyLevel(GetInfamy())
+  if (infamyLevel >= INFAMY_LEVEL_NOTORIOUS and GuardWarner.savedVariables.showKosWarning) then
     GuardWarner.icon:SetColor(255, 0, 0, GuardWarner.shieldOpacity)
     GuardWarner.icon:SetHidden(false)
   elseif (GetBounty() > 0 and GuardWarner.savedVariables.showBountyWarning) then
@@ -216,8 +224,9 @@ end
 
 -- Draw bounty time text
 function GuardWarner.DrawBountyTimeText()
+  infamyLevel = GetInfamyLevel(GetInfamy())
   GuardWarner.UpdateTimer()
-  if (IsKillOnSight() and GuardWarner.savedVariables.showKosWarning and GuardWarner.savedVariables.showBountyTimer) then
+  if (infamyLevel >= INFAMY_LEVEL_NOTORIOUS and GuardWarner.savedVariables.showKosWarning and GuardWarner.savedVariables.showBountyTimer) then
     GuardWarnerGuiLabel:SetHidden(false)
     GuardWarnerGuiLabel:SetColor(255, 0, 0)
   elseif (GetBounty() > 0 and GuardWarner.savedVariables.showBountyWarning and GuardWarner.savedVariables.showBountyTimer) then
@@ -247,7 +256,6 @@ function GuardWarner.StepShieldOpacity()
   else
     GuardWarner.shieldOpacity = GuardWarner.shieldOpacity - SHIELD_OPACITY_INCREMENT
   end
-
 end
 
 -- Checks if player has a bounty and updates the bounty gold and time for display

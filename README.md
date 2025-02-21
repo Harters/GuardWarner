@@ -1,5 +1,5 @@
 # Guard Warner
-## by DungMerchant
+## by The Dung Merchant
 #### excleros@yahoo.com
 
 --------------------------------------------------------------------------------
